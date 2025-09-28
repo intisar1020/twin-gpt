@@ -10,6 +10,8 @@ from functools import partial
 from typing import Optional, Callable, List
 
 
+
+
 ASSISTANT_NAME = "intisar chowdhury"  # canonical assistant name (case-insensitive)
 USER_TAG = "<|user|>"
 ASSISTANT_TAG = "<|assistant|>"
@@ -27,15 +29,24 @@ class ChatDataset(Dataset):
         """
         self.tokenizer = tokenizer
         self.max_length = max_length
-        self.examples = []  # will hold tuples (input_ids:list[int], labels:list[int])
-
-        # Process pairs of lines as before (0,1), (2,3) ...
+        self.encoded_text = []
+        file_for_debug = open("debug-dataset.txt", "w", encoding="utf-8")
+        
         for i in range(0, len(raw_lines) - 1, 2):
             raw_a = raw_lines[i]
             raw_b = raw_lines[i + 1]
 
             speaker_a, msg_a = self._split_speaker_and_text(raw_a)
             speaker_b, msg_b = self._split_speaker_and_text(raw_b)
+            if ("called" in msg_a) or ("called" in msg_b):
+                continue
+            if("missed your call." in msg_a) or ("missed your call." in msg_b):
+                continue
+            
+            if (speaker_a is None) or (speaker_b is None):
+                continue
+            # if (not "Intisar Chowdhury" in speaker_a) or not ("Intisar Chowdhury" in speaker_b):
+            #     continue
 
             # Decide which line is user and which is assistant.
             # If one speaker matches ASSISTANT_NAME -> that's assistant.
@@ -67,41 +78,12 @@ class ChatDataset(Dataset):
             prefix = f"{USER_TAG}\n{user_text}\n{ASSISTANT_TAG}\n" # this will be provided as context.
             full_text = prefix + assistant_text  # no trailing newline necessary
 
-            # Tokenize prefix to find assistant token start
-            prefix_ids = tokenizer.encode(prefix)
             full_ids = tokenizer.encode(full_text)
+            self.encoded_text.append(full_ids)
+            # save a copy with text for debugging in a file.
+            file_for_debug.write(full_text + "\n")
 
-            # Optionally truncate if too long
-            if self.max_length is not None and len(full_ids) > self.max_length:
-                # keep last max_length tokens (so assistant part is retained preferentially)
-                full_ids = full_ids[-self.max_length:]
-                # recompute prefix length in tokens (approximate): find first occurrence of prefix end if possible
-                # easiest approach: if prefix longer than max_length, we won't have assistant tokens -> skip
-                if len(full_ids) <= len(prefix_ids):
-                    # skip example (can't train assistant-only target if prefix consumes all tokens)
-                    continue
-                # adjust prefix_ids length relative to truncated full_ids
-                # we assume assistant_token_start = index of first token after prefix in truncated full
-                # So compute number of tokens removed from the front:
-                # Number removed = original_full_len - new_full_len
-                removed = tokenizer.encode(prefix + assistant_text)
-                # but to avoid complexity, recompute by re-encoding using the truncated text string:
-                # Construct the text back from tokens is not feasible here; so fallback: compute prefix token length as
-                assistant_token_start = max(0, len(prefix_ids) - (len(prefix_ids) - (len(full_ids) - len(prefix_ids))))
-                # This is approximate; to be robust, prefer not to hit this branch in normal runs.
-                assistant_token_start = len(prefix_ids)  # fallback
-            else:
-                assistant_token_start = len(prefix_ids)
-
-            # Build labels: -100 for tokens before assistant_token_start, actual token ids thereafter
-            labels = [-100] * len(full_ids)
-            for idx_tok in range(assistant_token_start, len(full_ids)):
-                labels[idx_tok] = full_ids[idx_tok]
-
-            # Save example
-            # so basically full_ids, and labels are of same length
-        
-            self.examples.append((full_ids, labels))
+        file_for_debug.close()
 
     def _split_speaker_and_text(self, line: str):
         """
@@ -120,11 +102,11 @@ class ChatDataset(Dataset):
         return s.strip()
 
     def __len__(self):
-        return len(self.examples)
+        return len(self.encoded_text)
 
     def __getitem__(self, idx):
-        return self.examples[idx]  # (input_ids:list[int], labels:list[int])
-
+        return self.encoded_text[idx]
+    
 
 def custom_collate_fn(
     batch,
@@ -133,43 +115,32 @@ def custom_collate_fn(
     allowed_max_length=None,
     device="cpu"
 ):
-    """
-    batch: list of tuples (input_ids:list[int], labels:list[int])
-    Returns:
-      inputs_tensor: LongTensor (batch_size, seq_len)
-      labels_tensor: LongTensor (batch_size, seq_len) with -100 where loss should be ignored
-    """
-    # Determine max length in batch (add 1 for potential eos)
-    batch_max_length = max(len(inp) for inp, _ in batch) + 1
+    batch_max_length = max(len(item)+1 for item in batch)
+    if allowed_max_length is not None:
+        batch_max_length = min(batch_max_length, allowed_max_length)
 
     inputs_lst = []
     labels_lst = []
 
-    for input_ids, labels in batch:
-        # Append an <|endoftext|> token to sequence (if desired)
-        new_input = list(input_ids) + [pad_token_id]
-        new_labels = list(labels) + [ignore_index]  # don't predict eos
+    for item in batch:
+        new_item = item.copy() + [pad_token_id]
+        new_item = new_item[:batch_max_length]
+        pad_len = batch_max_length - len(new_item)
+        new_item = new_item + [pad_token_id] * pad_len
 
-        # Pad to batch_max_length
-        pad_len = batch_max_length - len(new_input)
-        if pad_len > 0:
-            new_input = new_input + [pad_token_id] * pad_len
-            new_labels = new_labels + [ignore_index] * pad_len
-        else:
-            new_input = new_input[:batch_max_length]
-            new_labels = new_labels[:batch_max_length]
+        inputs = torch.tensor(new_item[:-1], dtype=torch.long)
+        labels = torch.tensor(new_item[1:], dtype=torch.long)
 
-        # Optionally truncate to allowed_max_length
-        if allowed_max_length is not None:
-            new_input = new_input[:allowed_max_length]
-            new_labels = new_labels[:allowed_max_length]
+        pad_indices = (labels == pad_token_id).nonzero(as_tuple=True)[0]
+        if pad_indices.numel() > 1:
+            labels[pad_indices[1:]] = ignore_index
 
-        inputs_lst.append(torch.tensor(new_input, dtype=torch.long))
-        labels_lst.append(torch.tensor(new_labels, dtype=torch.long))
+        inputs_lst.append(inputs)
+        labels_lst.append(labels)
 
-    inputs_tensor = torch.stack(inputs_lst)
-    labels_tensor = torch.stack(labels_lst)
-
+    inputs_tensor = torch.stack(inputs_lst).to(device)
+    labels_tensor = torch.stack(labels_lst).to(device)
+    
     return inputs_tensor, labels_tensor
 
 
