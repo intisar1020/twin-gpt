@@ -112,13 +112,15 @@ def custom_collate_fn(
     # Shift first
     shifted_inputs, shifted_labels = [], []
     for input_ids, labels in batch:
+        if allowed_max_length is not None:
+            input_ids = input_ids[:allowed_max_length]
+            labels = labels[:allowed_max_length]
+            
         shifted_inputs.append(input_ids[:-1])
         shifted_labels.append(labels[1:])
 
     # Compute batch max length after shift
     batch_max_length = max(len(seq) for seq in shifted_inputs)
-    if allowed_max_length is not None:
-        batch_max_length = min(batch_max_length, allowed_max_length)
 
     input_list, label_list = [], []
     for inp, lab in zip(shifted_inputs, shifted_labels):

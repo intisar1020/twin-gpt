@@ -35,14 +35,14 @@ cfg = {
     "train": {
         "lr": 3e-4,
         "epoch": 3,  
-        "batch_size": 2,  # GPU memory poor
+        "batch_size": 4,  # GPU memory poor
         "weight_decay": 1e-2,
         "pretrained_path": "./ckpts/gpt2-124M.pth", 
         "warmup_steps": 500,  # linear warmup
     },
     "data": {
         "data_path": "data/conf.txt",  
-        "batch_size": 2,                      
+        "batch_size": 4,                      
         "num_workers": 0,
         "pad_token_id": 50256,                
         "ignore_index": -100,                 
