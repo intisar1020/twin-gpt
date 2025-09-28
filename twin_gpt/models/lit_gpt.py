@@ -10,12 +10,8 @@ class LitGPT(pl.LightningModule):
         self.save_hyperparameters()
         self.model = GPTModel(model_cfg)
 
-        try:
-            self.model.load_state_dict(torch.load(train_cfg.get("pretrained_path", "twin_gpt_initial.pth")))
-            print(f"Loaded pre-trained model weights from {train_cfg.get('pretrained_path', 'twin_gpt_initial.pth')}")
-        except FileNotFoundError:
-            print("No pre-trained model weights found, training from scratch.")
-
+        self.model.load_state_dict(torch.load(train_cfg.get("pretrained_path", "twin_gpt_initial.pth")))
+        
         self.lr = train_cfg["lr"]
         self.epoch = train_cfg["epoch"]
         self.weight_decay = train_cfg["weight_decay"]

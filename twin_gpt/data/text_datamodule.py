@@ -36,6 +36,8 @@ class ChatDataset(Dataset):
                 # Skip unwanted lines
                 if ("called" in msg_a) or ("called" in msg_b):
                     continue
+                if ("You missed a call" in msg_a) or ("You missed a call" in msg_b):
+                    continue
                 if ("missed your call." in msg_a) or ("missed your call." in msg_b):
                     continue
                 if ("sent an attachment." in msg_a) or ("sent an attachment." in msg_b):
