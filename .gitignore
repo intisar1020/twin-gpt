@@ -3,3 +3,9 @@ __pycache__/
 *.pth
 *.ckpt
 data/
+ckpts/
+wandb/
+logs/
+*.log
+*.csv
+*.json

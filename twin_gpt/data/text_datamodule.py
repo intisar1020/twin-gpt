@@ -45,13 +45,7 @@ class ChatDataset(Dataset):
             
             if (speaker_a is None) or (speaker_b is None):
                 continue
-            # if (not "Intisar Chowdhury" in speaker_a) or not ("Intisar Chowdhury" in speaker_b):
-            #     continue
-
-            # Decide which line is user and which is assistant.
-            # If one speaker matches ASSISTANT_NAME -> that's assistant.
-            # If both are users (no assistant), treat a as user, b as assistant (best-effort).
-            # If both assistant, skip (no user).
+           
             is_a_assistant = (speaker_a is not None and speaker_a.lower() == ASSISTANT_NAME)
             is_b_assistant = (speaker_b is not None and speaker_b.lower() == ASSISTANT_NAME)
 
@@ -96,8 +90,9 @@ class ChatDataset(Dataset):
             return None, line.strip()
 
     def clean_text(self, s: str) -> str:
-        # Keep only basic printable characters
-        s = re.sub(r"[^\x20-\x7E]+", " ", s)
+        # Keep only letters (A-Z, a-z) and common punctuation
+        s = re.sub(r"[^A-Za-z.,!?;:'\"()\[\]{}\-<> ]+", " ", s)
+        # Collapse multiple spaces into one
         s = re.sub(r"\s+", " ", s)
         return s.strip()
 
