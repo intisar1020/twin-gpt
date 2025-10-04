@@ -32,28 +32,21 @@ class LitGPT(pl.LightningModule):
         input_batch, target_batch = batch
         logits = self(input_batch)
         loss = self.criterion(logits.view(-1, logits.size(-1)), target_batch.view(-1))
-        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(
-            self.parameters(),
-            lr=self.lr,
-            betas=(0.9, 0.95),
-            eps=1e-8,
-            weight_decay=self.weight_decay
-        )
+        optimizer = torch.optim.AdamW(self.parameters(), lr=0.00005, weight_decay=0.1)
+        # def lr_lambda(current_step: int):
+        #     if current_step < self.warmup_steps:
+        #         return float(current_step) / float(max(1, self.warmup_steps))
+        #     return max(
+        #         0.0, 0.5 * (1.0 + torch.cos(torch.tensor(current_step - self.warmup_steps) / (self.epoch*1000) * 3.1415926535))
+        #     )
 
-        def lr_lambda(current_step: int):
-            if current_step < self.warmup_steps:
-                return float(current_step) / float(max(1, self.warmup_steps))
-            return max(
-                0.0, 0.5 * (1.0 + torch.cos(torch.tensor(current_step - self.warmup_steps) / (self.epoch*1000) * 3.1415926535))
-            )
-
-        scheduler = {
-            'scheduler': LambdaLR(optimizer, lr_lambda),
-            'interval': 'step',
-            'frequency': 1
-        }
-        return [optimizer], [scheduler]
+        # scheduler = {
+        #     'scheduler': LambdaLR(optimizer, lr_lambda),
+        #     'interval': 'step',
+        #     'frequency': 1
+        # }
+        return [optimizer]# , [scheduler]

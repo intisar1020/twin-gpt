@@ -25,62 +25,62 @@ class ChatDataset(Dataset):
         self.max_length = max_length
         self.encoded_text: List[Tuple[List[int], List[int]]] = []
 
-        with open("debug-dataset.txt", "w", encoding="utf-8") as file_for_debug:
-            for i in range(0, len(raw_lines) - 1, 2):
-                raw_a = raw_lines[i]
-                raw_b = raw_lines[i + 1]
+        # with open("debug-dataset.txt", "w", encoding="utf-8") as file_for_debug:
+        for i in range(0, len(raw_lines) - 1, 2):
+            raw_a = raw_lines[i]
+            raw_b = raw_lines[i + 1]
 
-                speaker_a, msg_a = self._split_speaker_and_text(raw_a)
-                speaker_b, msg_b = self._split_speaker_and_text(raw_b)
+            speaker_a, msg_a = self._split_speaker_and_text(raw_a)
+            speaker_b, msg_b = self._split_speaker_and_text(raw_b)
 
-                # Skip unwanted lines
-                if ("called" in msg_a) or ("called" in msg_b):
-                    continue
-                if ("You missed a call" in msg_a) or ("You missed a call" in msg_b):
-                    continue
-                if ("missed your call." in msg_a) or ("missed your call." in msg_b):
-                    continue
-                if ("sent an attachment." in msg_a) or ("sent an attachment." in msg_b):
-                    continue
+            # Skip unwanted lines
+            if ("called" in msg_a) or ("called" in msg_b):
+                continue
+            if ("You missed a call" in msg_a) or ("You missed a call" in msg_b):
+                continue
+            if ("missed your call." in msg_a) or ("missed your call." in msg_b):
+                continue
+            if ("sent an attachment." in msg_a) or ("sent an attachment." in msg_b):
+                continue
 
-                if speaker_a is None or speaker_b is None:
-                    continue
+            if speaker_a is None or speaker_b is None:
+                continue
 
-                # Determine which line is assistant/user
-                is_a_assistant = (speaker_a.lower() == ASSISTANT_NAME) if speaker_a else False
-                is_b_assistant = (speaker_b.lower() == ASSISTANT_NAME) if speaker_b else False
+            # Determine which line is assistant/user
+            is_a_assistant = (speaker_a.lower() == ASSISTANT_NAME) if speaker_a else False
+            is_b_assistant = (speaker_b.lower() == ASSISTANT_NAME) if speaker_b else False
 
-                if is_a_assistant and not is_b_assistant:
-                    assistant_text = msg_a
-                    user_text = msg_b
-                elif is_b_assistant and not is_a_assistant:
-                    assistant_text = msg_b
-                    user_text = msg_a
-                elif not is_a_assistant and not is_b_assistant:
-                    # No explicit assistant -> best-effort
-                    user_text = msg_a
-                    assistant_text = msg_b
-                else:
-                    # both assistant -> treat first as user, second as assistant
-                    user_text = msg_a
-                    assistant_text = msg_b
+            if is_a_assistant and not is_b_assistant:
+                assistant_text = msg_a
+                user_text = msg_b
+            elif is_b_assistant and not is_a_assistant:
+                assistant_text = msg_b
+                user_text = msg_a
+            elif not is_a_assistant and not is_b_assistant:
+                # No explicit assistant -> best-effort
+                user_text = msg_a
+                assistant_text = msg_b
+            else:
+                # both assistant -> treat first as user, second as assistant
+                user_text = msg_a
+                assistant_text = msg_b
 
-                # Clean texts
-                user_text = self.clean_text(user_text)
-                assistant_text = self.clean_text(assistant_text)
+            # Clean texts
+            user_text = self.clean_text(user_text)
+            assistant_text = self.clean_text(assistant_text)
 
-                # Format sequence
-                prefix = f"{USER_TAG}\n{user_text}\n{ASSISTANT_TAG}\n"
-                full_text = prefix + assistant_text
+            # Format sequence
+            prefix = f"{USER_TAG}\n{user_text}\n{ASSISTANT_TAG}\n"
+            full_text = prefix + assistant_text
 
-                input_ids = tokenizer.encode(full_text)
-                prefix_ids = tokenizer.encode(prefix)
+            input_ids = tokenizer.encode(full_text)
+            prefix_ids = tokenizer.encode(prefix)
 
-                # Labels: only compute loss for assistant part
-                labels = [-100] * len(prefix_ids) + input_ids[len(prefix_ids):]
+            # Labels: only compute loss for assistant part
+            labels = [-100] * len(prefix_ids) + input_ids[len(prefix_ids):]
 
-                self.encoded_text.append((input_ids, labels))
-                file_for_debug.write(full_text + "\n")
+            self.encoded_text.append((input_ids, labels))
+            # file_for_debug.write(full_text + "\n")
 
     def _split_speaker_and_text(self, line: str):
         if ":" in line:
@@ -162,7 +162,7 @@ class ChatDataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         self.train_dataset = ChatDataset(self.train_data, self.tokenizer, max_length=self.max_length)
-        self.val_dataset = ChatDataset(self.val_data, self.tokenizer, max_length=self.max_length) if self.val_data else None
+        self.val_dataset = ChatDataset(self.val_data, self.tokenizer, max_length=self.max_length)
 
     def train_dataloader(self):
         return DataLoader(
@@ -180,18 +180,16 @@ class ChatDataModule(pl.LightningDataModule):
         )
 
     def val_dataloader(self):
-        if self.val_dataset:
-            return DataLoader(
-                self.val_dataset,
-                batch_size=self.batch_size,
-                shuffle=False,
-                num_workers=self.num_workers,
-                collate_fn=partial(
-                    custom_collate_fn,
-                    pad_token_id=self.pad_token_id,
-                    ignore_index=self.ignore_index,
-                    allowed_max_length=self.max_length,
-                    device=self.device,
-                ),
-            )
-        return None
+        return DataLoader(
+            self.val_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            collate_fn=partial(
+                custom_collate_fn,
+                pad_token_id=self.pad_token_id,
+                ignore_index=self.ignore_index,
+                allowed_max_length=self.max_length,
+                device=self.device,
+            ),
+        )

@@ -4,6 +4,7 @@
 # ------------------------------------------------------------
 
 import os
+import json
 import pytorch_lightning as pl
 import torch
 import tiktoken
@@ -12,52 +13,16 @@ from functools import partial
 from twin_gpt.data.text_datamodule import ChatDataModule
 from twin_gpt.models.lit_gpt import LitGPT
 
-
-import wandb
 from pytorch_lightning.loggers import WandbLogger
 
 wandb_logger = WandbLogger(
     project="twin_gpt_project",
-    name="twin_gpt_training",
+    name="twin_gpt_training-v1.0",
     log_model="all",
 )
 
-cfg = {
-    "model": {
-        "vocab_size": 50257,  # GPT-2 vocab size
-        "emb_dim": 768,
-        "n_layers": 12,
-        "n_heads": 12,
-        "context_length": 1024,
-        "drop_rate": 0.1,
-        "qkv_bias": True,
-    },
-    "train": {
-        "lr": 3e-4,
-        "epoch": 3,  
-        "batch_size": 4,  # GPU memory poor
-        "weight_decay": 1e-2,
-        "pretrained_path": "./ckpts/gpt2-124M.pth", 
-        "warmup_steps": 500,  # linear warmup
-    },
-    "data": {
-        "data_path": "data/conf.txt",  
-        "batch_size": 4,                      
-        "num_workers": 0,
-        "pad_token_id": 50256,                
-        "ignore_index": -100,                 
-        "max_length": 1024,                   
-        "device": "cuda" if torch.cuda.is_available() else "cpu",
-    },
-    "trainer": {
-        "max_epochs": 3,                
-        "log_every_n_steps": 5,
-        "devices": 1 if torch.cuda.is_available() else None,
-        "precision": 16,                # mixed precision
-        "gradient_clip_val": 1.0,
-        "accumulate_grad_batches": 1,
-    }
-}
+with open("configs/litgpt2.json", "r") as f:
+    cfg = json.load(f)
 
 
 def main():
@@ -69,10 +34,11 @@ def main():
         print(f"Error loading data: {e}")
         return
     
-    train_portion = int(0.9 * len(data))
-    train_data = data[:train_portion]
+    train_portion = int(0.85 * len(data))
+    train_data = data[0:train_portion]
     val_data = data[train_portion:]
     print(f"Training samples: {len(train_data)}, Validation samples: {len(val_data)}")
+
 
     tokenizer = tiktoken.get_encoding("gpt2")
     try:
@@ -85,7 +51,7 @@ def main():
         monitor="val_loss",
         dirpath="logs/checkpoints",
         filename="twin_gpt-{epoch:02d}-{val_loss:.4f}",
-        save_top_k=1,
+        save_top_k=2,
         mode="min"
     )
 
@@ -114,9 +80,9 @@ def main():
 
     # Train
     trainer.fit(model, data_module)
-
-
-    torch.save(model.state_dict(), "twin_gpt_final.pth")
+    
+    trainer.save_checkpoint("logs/checkpoints/twin_gpt_final.ckpt")
+    torch.save(model.state_dict(), "logs/checkpoints/twin_gpt_final.pth")
     print("Training completed, model saved as twin_gpt_final.pth")
 
 if __name__ == "__main__":
