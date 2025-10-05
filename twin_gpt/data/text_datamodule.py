@@ -79,6 +79,10 @@ class ChatDataset(Dataset):
             # Labels: only compute loss for assistant part
             labels = [-100] * len(prefix_ids) + input_ids[len(prefix_ids):]
 
+            if (self.max_length is not None) and (len(input_ids) > self.max_length):
+                input_ids = input_ids[:self.max_length]
+                labels = labels[:self.max_length]
+
             self.encoded_text.append((input_ids, labels))
             # file_for_debug.write(full_text + "\n")
 
@@ -106,16 +110,15 @@ def custom_collate_fn(
     batch,
     pad_token_id: int = 50256,
     ignore_index: int = -100,
-    allowed_max_length: Optional[int] = None,
+    # allowed_max_length: Optional[int] = None,
     device: str = "cpu"
 ):
     # Shift first
     shifted_inputs, shifted_labels = [], []
     for input_ids, labels in batch:
-        if allowed_max_length is not None:
-            input_ids = input_ids[:allowed_max_length]
-            labels = labels[:allowed_max_length]
-            
+        if (len(input_ids) <= 3) or (len(labels) <= 3):
+            continue  # skip too short sequences
+        
         shifted_inputs.append(input_ids[:-1])
         shifted_labels.append(labels[1:])
 
@@ -174,7 +177,7 @@ class ChatDataModule(pl.LightningDataModule):
                 custom_collate_fn,
                 pad_token_id=self.pad_token_id,
                 ignore_index=self.ignore_index,
-                allowed_max_length=self.max_length,
+                # allowed_max_length=self.max_length,
                 device=self.device,
             ),
         )
@@ -189,7 +192,7 @@ class ChatDataModule(pl.LightningDataModule):
                 custom_collate_fn,
                 pad_token_id=self.pad_token_id,
                 ignore_index=self.ignore_index,
-                allowed_max_length=self.max_length,
+                # allowed_max_length=self.max_length,
                 device=self.device,
             ),
         )

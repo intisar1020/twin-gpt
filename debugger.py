@@ -33,8 +33,8 @@ def main():
     except Exception as e:
         print(f"Error loading data: {e}")
         return
-    
-    train_portion = int(0.85 * len(data))
+    # data = data[:1000]  # Use a subset for quick testing
+    train_portion = int(0.97 * len(data))
     train_data = data[0:train_portion]
     val_data = data[train_portion:]
     print(f"Training samples: {len(train_data)}, Validation samples: {len(val_data)}")
