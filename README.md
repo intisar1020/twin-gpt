@@ -1,6 +1,15 @@
 # twin-gpt
 a personal fun project where I  train gpt-2-small model  to communicate like me.
 
+# Getting Started
+```bash
+git clone https://github.com/intisar1020/twin-gpt.git
+pip install poetry
+poetry install
+```
+thats it!.
+
+
 # Train the model
 ```bash
 python train.py
