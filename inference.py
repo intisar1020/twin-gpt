@@ -45,7 +45,7 @@ def chat():
         input_ids = input_ids.to(device)
         output_ids = generate(model, input_ids, max_new_tokens, context_size, temperature, top_k, eos_id)
         output_text = tokenizer.decode(output_ids[0].tolist())
-        output_text = output_text.replace(user_input, "")
+        # output_text = output_text.replace(user_input, "")
         print(f"Model: {output_text}")
 
 chat()
