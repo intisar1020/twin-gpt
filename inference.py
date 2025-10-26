@@ -6,7 +6,7 @@ import torch
 import argparse
 
 parser = argparse.ArgumentParser(description="Chat with the model")
-parser.add_argument("--ckpt_path", type=str, default="logs/checkpoints/twin_gpt-epoch=00-val_loss=4.0697.ckpt", help="Path to the model checkpoint")
+parser.add_argument("--ckpt_path", type=str, default="logs/checkpoints/twin_gpt_final.ckpt", help="Path to the model checkpoint")
 args = parser.parse_args()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -45,6 +45,7 @@ def chat():
         input_ids = input_ids.to(device)
         output_ids = generate(model, input_ids, max_new_tokens, context_size, temperature, top_k, eos_id)
         output_text = tokenizer.decode(output_ids[0].tolist())
+        output_text = output_text.replace(user_input, "")
         print(f"Model: {output_text}")
 
 chat()
