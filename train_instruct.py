@@ -10,7 +10,7 @@ import torch
 import tiktoken
 from functools import partial
 
-from twin_gpt.data.instruct_datamodule import InstructDataModule
+from twin_gpt.dataset.instruct_datamodule import InstructDataModule
 from twin_gpt.models.lit_gpt import LitGPT
 
 from pytorch_lightning.loggers import WandbLogger
