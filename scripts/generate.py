@@ -1,7 +1,6 @@
 #credit: following code/function is adapted from https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/01_main-chapter-code/previous_chapters.py
 
 import torch
-import torch.nn as nn
 
 def generate(model, idx, max_new_tokens, context_size, temperature=0.0, top_k=None, eos_id=None):
 

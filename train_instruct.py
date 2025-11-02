@@ -3,12 +3,10 @@
 # Author: Intistark(modified from Raschka LLM tutorial)
 # ------------------------------------------------------------
 
-import os
 import json
 import pytorch_lightning as pl
 import torch
 import tiktoken
-from functools import partial
 
 from twin_gpt.dataset.instruct_datamodule import InstructDataModule
 from twin_gpt.models.lit_gpt import LitGPT
