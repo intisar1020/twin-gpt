@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import pytorch_lightning as pl
 from functools import partial
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 
 class InstructDataset(Dataset):

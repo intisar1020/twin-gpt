@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
-from torch.optim.lr_scheduler import LambdaLR
 from .gpt_model import GPTModel
 
 class LitGPT(pl.LightningModule):

@@ -3,7 +3,6 @@ import torch
 import tiktoken
 from twin_gpt.models.lit_gpt import LitGPT
 from scripts.generate import generate
-from pathlib import Path
 
 CKPT_PATH = "logs/checkpoints/twin_gpt_final.ckpt"
 INPUT_JSON = "data/instruct.json"
