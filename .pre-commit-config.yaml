@@ -1,0 +1,22 @@
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.4  # You can check the latest: https://github.com/astral-sh/ruff-pre-commit/releases
+    hooks:
+      - id: ruff
+        args: [--fix]
+
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0  # Check https://github.com/pre-commit/pre-commit-hooks/releases for the latest version
+    hooks:
+      - id: check-added-large-files
+        args: ['--maxkb=100']  # Set the max file size limit in kilobytes (here, 100KB)
+
+  # detect secrets in code
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        # exclude: package.lock.json
